@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "server-name": {
+      "url": "http://64.23.177.109:3000/mcp"
+    }
+  }
+}
