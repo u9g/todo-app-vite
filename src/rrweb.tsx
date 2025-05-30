@@ -35,13 +35,29 @@ export type CustomEvent =
   | {
       name: "rage-click-with-no-react-fiber";
       data: { totalClicks: number };
+    }
+  | {
+      name: "xhr-network-error";
+      data: {
+        url: string;
+        status: number | string;
+        error: string;
+      };
+    }
+  | {
+      name: "error";
+      data: {
+        error: string;
+        stack: string;
+        componentStack: string;
+      };
     };
 
 const events: T.eventWithTime[] = [];
 const { addCustomEvent: _addCustomEvent, mirror } = rrweb.record;
 
-const addCustomEvent = ({ name, data }: CustomEvent) => {
-  if (name !== "dom-mutation") console.log("addCustomEvent", name);
+export const addCustomEvent = ({ name, data }: CustomEvent) => {
+  if (name !== "dom-mutation") console.log("addCustomEvent", name, data);
   _addCustomEvent(name, data);
 };
 
@@ -208,9 +224,61 @@ window.addEventListener(
   /* useCapture = */ true
 );
 
+// networkInterceptor.ts – import this first!
+type NotifyFn = (info: { url: string; status?: number; error?: any }) => void;
+
+export function installNetworkInterceptor(onFail: NotifyFn) {
+  // ---- fetch -------------------------------------------------------------
+  const _fetch = window.fetch;
+  window.fetch = async (...args) => {
+    try {
+      const res = await _fetch(...(args as Parameters<typeof fetch>));
+      if (!res.ok) onFail({ url: res.url, status: res.status });
+      return res;
+    } catch (e) {
+      onFail({ url: String(args[0]), error: e });
+      throw e; // preserve normal promise semantics
+    }
+  };
+
+  // ---- XMLHttpRequest ----------------------------------------------------
+  const _open = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (...openArgs: any[]) {
+    this.addEventListener("error", () =>
+      onFail({ url: this.responseURL || openArgs[1], error: "network-error" })
+    );
+    this.addEventListener("abort", () =>
+      onFail({ url: this.responseURL || openArgs[1], error: "abort" })
+    );
+    this.addEventListener("load", () => {
+      if (this.status >= 400)
+        onFail({ url: this.responseURL, status: this.status });
+    });
+    return _open.apply(this, openArgs);
+  };
+}
+
+installNetworkInterceptor(({ url, status, error }) => {
+  // send to Sentry / show toast / retry logic:
+  addCustomEvent({
+    name: "xhr-network-error",
+    data: {
+      url,
+      status: status ?? "<no status>",
+      error: error ? String(error) : "<no error>",
+    },
+  });
+  uploadRecording("Network error");
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  console.log(event.reason.stack);
+  // addCustomEvent({ name: "error", data: { reason: event.reason } });
+});
+
 let timeout: ReturnType<typeof setTimeout> | null = null;
 
-async function uploadRecording(reason: string) {
+export async function uploadRecording(reason: string) {
   if (timeout !== null) return;
   timeout = setTimeout(() => {
     timeout = null;
