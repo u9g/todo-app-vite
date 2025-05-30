@@ -17,6 +17,10 @@ export type CustomEvent =
     }
   | { name: "no-view-change-after-click"; data: { componentStack: string[] } }
   | {
+      name: "dom-mutation";
+      data: Record<never, never>;
+    }
+  | {
       name: "clicked-without-clicking-on-any-react-component";
       data: Record<never, never>;
     }
@@ -145,6 +149,11 @@ rrweb.record({
         console.log("mutation");
         [...clicks.values()].forEach(clearTimeout);
         clicks.clear();
+        addCustomEvent({
+          name: "dom-mutation",
+          data: {},
+        });
+        return;
       }
     }
     events.push(event);

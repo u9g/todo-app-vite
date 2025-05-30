@@ -13,7 +13,7 @@ function App() {
     localStorage.setItem("todos", JSON.stringify(todos));
   }, [todos]);
 
-  const add100Todos = () => {
+  const add100RandomTodos = () => {
     const elements = [];
     for (let i = 0; i < 100; i++) {
       elements.push(crypto.randomUUID());
@@ -48,7 +48,7 @@ function App() {
           onKeyDown={handleKeyDown}
         />
         <button onClick={addTodo}>Add</button>
-        <button onClick={add100Todos}>Add 100</button>
+        <button onClick={add100RandomTodos}>Add 100 random todos</button>
         {todos.map((todo, index) => (
           <div className="todo-item" key={index}>
             <span className="todo-text">{todo}</span>
