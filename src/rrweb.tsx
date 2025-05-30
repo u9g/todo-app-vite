@@ -29,6 +29,10 @@ export type CustomEvent =
       data: { componentStack: string[]; totalClicks: number };
     }
   | {
+      name: "media-load-error";
+      data: { componentStack: string[]; url: string };
+    }
+  | {
       name: "rage-click-with-no-react-fiber";
       data: { totalClicks: number };
     };
@@ -37,8 +41,7 @@ const events: T.eventWithTime[] = [];
 const { addCustomEvent: _addCustomEvent, mirror } = rrweb.record;
 
 const addCustomEvent = ({ name, data }: CustomEvent) => {
-  console.log("addCustomEvent", name);
-  console.log({ size: events });
+  if (name !== "dom-mutation") console.log("addCustomEvent", name);
   _addCustomEvent(name, data);
 };
 
@@ -95,7 +98,7 @@ rrweb.record({
                   name: "rage-click",
                   data: { componentStack: fiberStackNames, totalClicks },
                 });
-                uploadRecording();
+                uploadRecording("Quick Repeated Clicks");
               } else {
                 addCustomEvent({
                   name: "rage-click-with-no-react-fiber",
@@ -133,7 +136,7 @@ rrweb.record({
                     name: "no-view-change-after-click",
                     data: { componentStack: fiberStackNames },
                   });
-                  uploadRecording();
+                  uploadRecording("No dom mutation after click");
                   clicks.delete(clickedNode as Element);
                 }, 2000)
               );
@@ -146,7 +149,6 @@ rrweb.record({
           }
         }
       } else if (event.data.source === T.IncrementalSource.Mutation) {
-        console.log("mutation");
         [...clicks.values()].forEach(clearTimeout);
         clicks.clear();
         addCustomEvent({
@@ -160,14 +162,59 @@ rrweb.record({
   },
 });
 
+// put this once, as early as possible (e.g. in index.js or _app.tsx)
+function handleResourceError({
+  target: el,
+}: {
+  target: EventTarget & HTMLElement;
+}) {
+  if (
+    el instanceof HTMLImageElement ||
+    el instanceof HTMLVideoElement ||
+    el instanceof HTMLAudioElement ||
+    el instanceof HTMLSourceElement
+  ) {
+    // Everything you need is on the element itself
+    const src = "currentSrc" in el ? el.currentSrc : el.src;
+    const fiber = getFiberFromHostInstance(el);
+    if (fiber !== null) {
+      const fiberStack = getFiberStack(fiber);
+      const fiberStackNames = fiberStack.map((f) => {
+        const displayName = getDisplayName(f);
+        if (displayName !== null) return displayName;
+
+        const className = f.pendingProps.className;
+        if (typeof className === "string") {
+          return `${f.elementType}.${className.split(" ").join(".")}`;
+        }
+
+        return f.elementType;
+      });
+      addCustomEvent({
+        name: "media-load-error",
+        data: {
+          componentStack: fiberStackNames,
+          url: src,
+        },
+      });
+      uploadRecording("Media Load Error");
+    }
+  }
+}
+
+window.addEventListener(
+  "error",
+  handleResourceError as any,
+  /* useCapture = */ true
+);
+
 let timeout: ReturnType<typeof setTimeout> | null = null;
 
-async function uploadRecording() {
+async function uploadRecording(reason: string) {
   if (timeout !== null) return;
   timeout = setTimeout(() => {
     timeout = null;
   }, 10000);
-  console.log("upload");
   await fetch("http://64.23.177.109:3000/api/process-recording", {
     method: "POST",
     body: JSON.stringify({
@@ -175,5 +222,9 @@ async function uploadRecording() {
     }),
   })
     .then((x) => x.text())
-    .then((x) => alert(x));
+    .then((x) =>
+      alert(
+        `New bug analyzed.\nClient Reason: ${reason}\nServer Response: ${x}`
+      )
+    );
 }

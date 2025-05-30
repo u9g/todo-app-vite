@@ -41,11 +41,12 @@ function App() {
   };
 
   const deleteTodo = (id: string) => {
-    setTodos((prevTodos) => prevTodos.filter((todo) => todo.id !== id));
+    setTodos(todos.filter((todo) => todo.id !== id));
   };
 
   return (
     <>
+      <img src="cat.png" />
       <div>
         <input
           type="text"
