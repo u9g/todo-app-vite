@@ -2,9 +2,15 @@ import "./rrweb";
 import { useEffect, useState } from "react";
 import "./App.css";
 
+// Define a Todo type
+interface Todo {
+  id: string;
+  text: string;
+}
+
 function App() {
   const [input, setInput] = useState("");
-  const [todos, setTodos] = useState<string[]>(() => {
+  const [todos, setTodos] = useState<Todo[]>(() => {
     const savedTodos = localStorage.getItem("todos");
     return savedTodos ? JSON.parse(savedTodos) : [];
   });
@@ -14,16 +20,16 @@ function App() {
   }, [todos]);
 
   const add100RandomTodos = () => {
-    const elements = [];
+    const elements: Todo[] = [];
     for (let i = 0; i < 100; i++) {
-      elements.push(crypto.randomUUID());
+      elements.push({ id: crypto.randomUUID(), text: crypto.randomUUID() });
     }
     setTodos([...elements, ...todos]);
   };
 
   const addTodo = () => {
     if (input.trim()) {
-      setTodos([input, ...todos]);
+      setTodos([{ id: crypto.randomUUID(), text: input }, ...todos]);
       setInput("");
     }
   };
@@ -34,8 +40,8 @@ function App() {
     }
   };
 
-  const deleteTodo = (index: number) => {
-    setTodos(todos.filter((_, i) => i !== index));
+  const deleteTodo = (id: string) => {
+    setTodos(todos.filter((todo) => todo.id !== id));
   };
 
   return (
@@ -49,10 +55,13 @@ function App() {
         />
         <button onClick={addTodo}>Add</button>
         <button onClick={add100RandomTodos}>Add 100 random todos</button>
-        {todos.map((todo, index) => (
-          <div className="todo-item" key={index}>
-            <span className="todo-text">{todo}</span>
-            <button className="delete-button" onClick={() => deleteTodo(index)}>
+        {todos.map((todo) => (
+          <div className="todo-item" key={todo.id}>
+            <span className="todo-text">{todo.text}</span>
+            <button
+              className="delete-button"
+              onClick={() => deleteTodo(todo.id)}
+            >
               Delete
             </button>
           </div>
