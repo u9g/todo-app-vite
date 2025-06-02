@@ -44,9 +44,14 @@ function App() {
     setTodos(todos.filter((todo) => todo.id !== id));
   };
 
+  useEffect(() => {
+    fetch("https://color.com/color").then((x) => {
+      console.log(x);
+    });
+  }, []);
+
   return (
     <>
-      <img src="cat.png" />
       <div>
         <input
           type="text"
