@@ -44,6 +44,10 @@ function App() {
     setTodos(todos.filter((todo) => todo.id !== id));
   };
 
+  useEffect(() => {
+    undefinedFunction();
+  }, []);
+
   return (
     <>
       <div>
