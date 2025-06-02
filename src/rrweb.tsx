@@ -35,12 +35,16 @@ export type CustomEvent =
   | {
       name: "rage-click-with-no-react-fiber";
       data: { totalClicks: number };
+    }
+  | {
+      name: "error";
+      data: { error: string; stack: string; componentStack: string };
     };
 
 const events: T.eventWithTime[] = [];
 const { addCustomEvent: _addCustomEvent, mirror } = rrweb.record;
 
-const addCustomEvent = ({ name, data }: CustomEvent) => {
+export const addCustomEvent = ({ name, data }: CustomEvent) => {
   if (name !== "dom-mutation") console.log("addCustomEvent", name);
   _addCustomEvent(name, data);
 };
@@ -210,7 +214,7 @@ window.addEventListener(
 
 let timeout: ReturnType<typeof setTimeout> | null = null;
 
-async function uploadRecording(reason: string) {
+export async function uploadRecording(reason: string) {
   if (timeout !== null) return;
   timeout = setTimeout(() => {
     timeout = null;

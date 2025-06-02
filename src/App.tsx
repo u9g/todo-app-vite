@@ -46,7 +46,6 @@ function App() {
 
   return (
     <>
-      <img src="cat.png" />
       <div>
         <input
           type="text"
